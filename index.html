@@ -1,0 +1,285 @@
+    <!DOCTYPE html>
+
+<html><head>
+
+<meta charset="utf-8">
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.js"></script>
+
+<!-- Load color scale -->
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+<!-- Create a div where the graph will take place -->
+<div class="Aligner" id="my_dataviz">
+<div class="Aligner-item Aligner-item--top">…</div>
+  <div class="Aligner-item"></div>
+  <div class="Aligner-item Aligner-item--bottom">…</div>
+</div>  
+<!-- A bit of CSS: change stroke color of circle on hover (white -> black) -->
+<style>
+.bubbles {
+  stroke-width: 1px;
+  stroke: black;
+  opacity: .8
+}
+.bubbles:hover {
+  stroke: black;
+}
+
+.Aligner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.Aligner-item {
+  max-width: 50%;
+}
+
+.Aligner-item--top {
+  align-self: flex-start;
+}
+
+.Aligner-item--bottom {
+  align-self: flex-end;
+}
+</style>
+ </head><body>
+<script>
+
+// set the dimensions and margins of the graph
+var margin = {top: 40, right: 150, bottom: 60, left: 30},
+    width = 500 - margin.left - margin.right,
+    height = 420 - margin.top - margin.bottom;
+
+// append the svg object to the body of the page
+var svg = d3.select("#my_dataviz")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+//Read the data
+d3.csv("100 Sales Records.csv", function(data) {
+
+  // ---------------------------//
+  //       AXIS  AND SCALE      //
+  // ---------------------------//
+
+  // Add X axis
+  var x = d3.scaleLinear()
+    .domain([0, 45000])
+    .range([ 0, width ]);
+  svg.append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x));
+
+  // Add X axis label:
+  svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", width)
+      .attr("y", height+50 )
+      .text("Total Profit");
+
+  // Add Y axis
+  var y = d3.scaleLinear()
+    .domain([35, 90])
+    .range([ height, 0]);
+  svg.append("g")
+    .call(d3.axisLeft(y));
+
+  // Add Y axis label:
+  svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("x", 0)
+      .attr("y", -20 )
+      .text("Number Of Units Sold")
+      .attr("text-anchor", "start")
+
+  // Add a scale for bubble size
+  var z = d3.scaleSqrt()
+    .domain([200000, 1310000000])
+    .range([ 2, 30]);
+
+  // Add a scale for bubble color
+  var myColor = d3.scaleOrdinal()
+    .domain(["Baby Food", "Beverages","Cereal", "Clothes","Cosmetics", "Fruits","Household", "Meat","Medicine","Furniture","Snacks","Vegetables"])
+    .range(d3.schemeSet1);
+
+
+  // ---------------------------//
+  //      TOOLTIP               //
+  // ---------------------------//
+
+  // -1- Create a tooltip div that is hidden by default:
+  var tooltip = d3.select("#my_dataviz")
+    .append("div")
+      .style("opacity", 0)
+      .attr("class", "tooltip")
+      .style("background-color", "black")
+      .style("border-radius", "5px")
+      .style("padding", "10px")
+      .style("color", "white")
+
+  // -2- Create 3 functions to show / update (when mouse move but stay on same circle) / hide the tooltip
+  var showTooltip = function(d) {
+    tooltip
+      .transition()
+      .duration(200)
+    tooltip
+      .style("opacity", 1)
+      .html("Item Type: " + d.Item_Type)
+      .style("left", (d3.mouse(this)[0]+30) + "px")
+      .style("top", (d3.mouse(this)[1]+30) + "px")
+  }
+  var moveTooltip = function(d) {
+    tooltip
+      .style("left", (d3.mouse(this)[0]+30) + "px")
+      .style("top", (d3.mouse(this)[1]+30) + "px")
+  }
+  var hideTooltip = function(d) {
+    tooltip
+      .transition()
+      .duration(200)
+      .style("opacity", 0)
+  }
+
+
+  // ---------------------------//
+  //       HIGHLIGHT GROUP      //
+  // ---------------------------//
+
+  // What to do when one group is hovered
+  var highlight = function(d){
+    // reduce opacity of all groups
+    d3.selectAll(".bubbles").style("opacity", .05)
+    // expect the one that is hovered
+    d3.selectAll("."+d).style("opacity", 1)
+  }
+
+  // And when it is not hovered anymore
+  var noHighlight = function(d){
+    d3.selectAll(".bubbles").style("opacity", 1)
+  }
+
+
+  // ---------------------------//
+  //       CIRCLES              //
+  // ---------------------------//
+
+  // Add dots
+  svg.append('g')
+    .selectAll("dot")
+    .data(data)
+    .enter()
+    .append("circle")
+      .attr("class", function(d) { return "bubbles " + d.Item_Type })
+      .attr("cx", function (d) { return x(d.Total_Profit); } )
+      .attr("cy", function (d) { return y(d.Units_Sold); } )
+      .attr("r", function (d) { return z(d.Total_Cost); } )
+      .style("fill", function (d) { return myColor(d.Item_Type); } )
+    // -3- Trigger the functions for hover
+    .on("mouseover", showTooltip )
+    .on("mousemove", moveTooltip )
+    .on("mouseleave", hideTooltip )
+
+
+
+    // ---------------------------//
+    //       LEGEND              //
+    // ---------------------------//
+
+    // Add legend: circles
+    var valuesToShow = [10000000, 100000000, 1000000000]
+    var xCircle = 390
+    var xLabel = 440
+    svg
+      .selectAll("legend")
+      .data(valuesToShow)
+      .enter()
+      .append("circle")
+        .attr("cx", xCircle +10)
+        .attr("cy", function(d){ return height - 30 - z(d) } )
+        .attr("r", function(d){ return z(d) })
+        .style("fill", "none")
+        .attr("stroke", "black")
+
+    // Add legend: segments
+    svg
+      .selectAll("legend")
+      .data(valuesToShow)
+      .enter()
+      .append("line")
+        .attr('x1', function(d){ return xCircle + z(d) +10 } )
+        .attr('x2', xLabel)
+        .attr('y1', function(d){ return height - 30 - z(d) } )
+        .attr('y2', function(d){ return height - 30 - z(d) } )
+        .attr('stroke', 'black')
+        .style('stroke-dasharray', ('2,2'))
+
+    // Add legend: labels
+    svg
+      .selectAll("legend")
+      .data(valuesToShow)
+      .enter()
+      .append("text")
+        .attr('x', xLabel + 10)
+        .attr('y', function(d){ return height - 30 - z(d) } )
+        .text( function(d){ return d/1000000 } )
+        .style("font-size", 10)
+        .attr('alignment-baseline', 'middle')
+
+    // Legend title
+    svg.append("text")
+      .attr('x', xCircle + 18)
+      .attr("y", height - 30 +30)
+      .text("Total Cost(Million)")
+      .attr("text-anchor", "middle")
+
+    // Add one dot in the legend for each name.
+    var size = 14
+    var allgroups = ["Baby Food", "Beverages","Cereal", "Clothes","Cosmetics", "Fruits","Household", "Meat","Medicine","Furniture","Snacks","Vegetables"]
+    svg.selectAll("myrect")
+      .data(allgroups)
+      .enter()
+      .append("circle")
+        .attr("cx", 390)
+        .attr("cy", function(d,i){ return 5 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+        .attr("r", 5)
+        .style("fill", function(d){ return myColor(d)})
+        .on("mouseover", highlight)
+        .on("mouseleave", noHighlight)
+
+    // Add labels beside legend dots
+    svg.selectAll("mylabels")
+      .data(allgroups)
+      .enter()
+      .append("text")
+        .attr("x", 390 + size*.8)
+        .attr("y", function(d,i){ return i * (size + 5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+        .style("fill", function(d){ return myColor(d)})
+        .text(function(d){ return d})
+        .attr("text-anchor", "left")
+        .style("alignment-baseline", "middle")
+        .on("mouseover", highlight)
+        .on("mouseleave", noHighlight)
+  })
+</script>
+<h5 align="center">Figure 1: Sales record of different types of product in all countries</h5>
+
+<h4>Intruduction</h4>
+<p>This report contains information of sales records of different types of product in all countries from 2012 to 2017. We have used D3 library as a data mining tool to visualize the most important insight.</p>
+
+<h4>Experiment</h4>
+<p>From the bubble plot in figure 1, we have seen that selling vegetable is more profitable than any other types of product. Alternatively, the total manufacturing cost of household and clothing product is very much high close to 100 million. In addition, according to the visualization, though the manufacturing cost of cereal, beverages, cosmetics are not so high, these failed to gain maximum profit.</p>
+
+<h4>Conclusion</h4>
+<p>Overall, Though this visualization does not have the perfect summary, we can develop some perceptions which are valuable for the business industry. In detail, if someone tries to open a new sector to expand the business, it would be best to focus on vegetables or agriculture sector as the manufacturing cost is reasonable and profit is substantial.</p>
+
+<h4>Reference</h4>
+<p>Holtz, Y. (2019). Bubble plot | the D3 Graph Gallery. [online] D3-graph-gallery.com. Available at: https://www.d3-graph-gallery.com/bubble.html [Accessed 10 Nov. 2019].</p>
+<p>Kaggle.com. (2019). Sales Record. [online] Available at: https://www.kaggle.com/vanshjatana/sales-record [Accessed 10 Nov. 2019].</p>
+ </body></html>
